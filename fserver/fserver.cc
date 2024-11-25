@@ -25,7 +25,8 @@ FSession::FSession(boost::asio::io_context& io_context, tcp::socket socket, Grou
 void FSession::doFileSection(int sequence, std::streampos start, std::streampos sectionSize)
 {
     std::fstream file;
-    file.open(upgrade_file_name_, std::ios::in | std::ios::binary);
+    std::string upgrade_file_path = std::string(RELEASE_PKG_DIR) + upgrade_file_name_;
+    file.open(upgrade_file_path, std::ios::in | std::ios::binary);
     if (!file.is_open()) {
         return;
     }
@@ -46,7 +47,7 @@ void FSession::processRequest(const jsonrpcpp::request_ptr request, jsonrpcpp::e
             if (request->method() == "VersionCheck") {
                 group_.Join(shared_from_this());
                 std::string client_version = request->params().get("Clientversion");
-                std::cout << "Clientversion: " << client_version << std::endl;
+                std::cout << "[File Server] Clientversion: " << client_version << std::endl;
                 if (client_version != WEFISH_VERSION) {
                     result["Expired"] = 1;
                 } else {
@@ -56,16 +57,20 @@ void FSession::processRequest(const jsonrpcpp::request_ptr request, jsonrpcpp::e
                 response.reset(new jsonrpcpp::Response(*request, result));
             } else if (request->method() == "SayHello") {
                 account_ = request->params().get("Account");
-                std::cout << "Account " << std::to_string(account_) << " online" << std::endl;
+                std::cout << "[File Server] Account " << std::to_string(account_) << " online" << std::endl;
                 result["Method"] = "SayHello";
                 result["Account"] = account_;
                 response.reset(new jsonrpcpp::Response(*request, result)); 
             } else if (request->method() == "UpgradeRequest") {
                 upgrade_file_name_ = std::string(UPGRADE_FILE_NAME) + "_" + std::string(WEFISH_VERSION) + std::string(UPGRADE_FILE_SUFFIX);
+                std::string upgrade_file_path = std::string(RELEASE_PKG_DIR) + upgrade_file_name_;
+                std::cout << "[File Server] Upgrade Pkg Path: " << upgrade_file_path << "\n";
+                upgrade_file_checksum_ = MD5Encrypt(upgrade_file_path);
+
                 std::fstream file_stream;
-                file_stream.open(upgrade_file_name_, std::ios::in | std::ios::binary);
+                file_stream.open(upgrade_file_path, std::ios::in | std::ios::binary);
                 if (!file_stream.is_open()) {
-                    std::cerr << "Upgrade package: " << upgrade_file_name_ << " not found" << std::endl;
+                    std::cerr << "Upgrade package: " << upgrade_file_path << " not found" << std::endl;
                     return;
                 }
                 file_stream.seekg(0, std::ios::end);
@@ -93,12 +98,12 @@ void FSession::processRequest(const jsonrpcpp::request_ptr request, jsonrpcpp::e
                     upgrade_file_content_.append(it);
                     it = std::string();
                 }
-                // std::cout << upgrade_file_content_ << "\n";
 
                 upgrade_file_size_ = upgrade_file_content_.size();
 
                 result["Method"] = "UpgradeReply";
                 result["Filename"] = upgrade_file_name_;
+                result["Checksum"] = upgrade_file_checksum_;
                 response.reset(new jsonrpcpp::Response(*request, result)); 
             }
         } else if (request->id().int_id() == MESSAGE_TYPE_FILE) {
@@ -150,6 +155,7 @@ void FSession::processRequest(const jsonrpcpp::request_ptr request, jsonrpcpp::e
                 result["Method"] = "UpgradeProcessing";
                 result["Account"] = account;
                 result["Content"] = encrypt;
+                result["Checksum"] = upgrade_file_checksum_;
                 result["Length"] = content.size();
                 result["Process"] = process;
                 response.reset(new jsonrpcpp::Response(*request, result));
@@ -216,7 +222,7 @@ void FSession::doRead()
         socket_, streambuf_, delimiter,
         boost::asio::bind_executor(strand_, [this, self, delimiter](const std::error_code& ec, std::size_t bytes_transferred) {
             if (ec) {
-                std::cerr << "Account " << std::to_string(self->account_) << " offline\n";
+                std::cerr << "[File Server] Account " << std::to_string(self->account_) << " offline\n";
                 group_.Leave(self);
                 return;
             }

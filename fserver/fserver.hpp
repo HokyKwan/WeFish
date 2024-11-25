@@ -28,7 +28,8 @@
 #include "jsonrpcpp.hpp"
 #include "message.hpp"
 
-#define WEFISH_VERSION "D_20240307_1"
+#define RELEASE_PKG_DIR "./release/"
+#define WEFISH_VERSION "R_20241125_1"
 #define UPGRADE_FILE_NAME "WeFish"
 #define UPGRADE_FILE_SUFFIX ".exe"
 
@@ -104,6 +105,7 @@ private:
     std::string key_;
     std::string upgrade_file_name_;
     std::string upgrade_file_content_;
+    std::string upgrade_file_checksum_;
     size_t upgrade_file_size_ = 0;
     size_t data_consume_ = 0;
     std::mutex mutex_;

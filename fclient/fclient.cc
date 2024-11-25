@@ -187,6 +187,9 @@ void FClient::doMessageReceived()
                 jsonrpcpp::response_ptr response = std::dynamic_pointer_cast<jsonrpcpp::Response>(entity);
                 jsonrpcpp::parameter_ptr param = std::make_shared<jsonrpcpp::Parameter>(response->result());
                 if (param->get("Method") == "SayHello") {
+                    int account = param->get("Account");
+                    std::cout << "Account: " << std::to_string(account) << " Online" << std::endl;
+                } else if (param->get("Method") == "VersionChecked") {
                     int Expired = param->get("Expired");
                     if (Expired) {
                         jsonrpcpp::request_ptr request(nullptr);
@@ -208,6 +211,7 @@ void FClient::doMessageReceived()
                 } else if (param->get("Method") == "UpgradeProcessing") {
                     int process = param->get("Process");
                     int length = param->get("Length");
+                    std::string checksum = param->get("Checksum");
 
                     //std::cout << "Process: " << std::to_string(process) << std::endl;
                     std::string content = param->get("Content");
@@ -225,8 +229,15 @@ void FClient::doMessageReceived()
                         std::fstream file_stream;
                         file_stream.open(upgrade_stream_->Name(), std::ios::out | std::ios::binary);
                         file_stream.write(upgrade_stream_->Pop().c_str(), upgrade_stream_->Size());
+                        std::string file_name = upgrade_stream_->Name();
                         upgrade_stream_ = nullptr;
                         file_stream.close();
+                        std::string md5sum = MD5Encrypt(file_name);
+                        if (md5sum.compare(checksum) == 0) {
+                            std::cout << "\nUpgrade Successfully\n";
+                        } else {
+                            std::cout << "\nChecksum: " << checksum << " Md5sum: " << md5sum << "\n";
+                        }
                     }
                 }
             } else if (entity->is_notification()) {
@@ -393,7 +404,12 @@ int main(int argc, char* argv[])
 
         jsonrpcpp::request_ptr request(nullptr);
         request.reset(new jsonrpcpp::Request(jsonrpcpp::Id(MESSAGE_TYPE_SETTING), "SayHello",
-            jsonrpcpp::Parameter("Account", account_s, "Clientversion", "D_20240221_1")));
+            jsonrpcpp::Parameter("Account", account_s)));
+        fclient.Send(request->to_json().dump());
+        std::cout << request->to_json().dump() << std::endl;
+
+        request.reset(new jsonrpcpp::Request(jsonrpcpp::Id(MESSAGE_TYPE_SETTING), "VersionCheck",
+            jsonrpcpp::Parameter("Clientversion", "D_20240307_1")));
         fclient.Send(request->to_json().dump());
         std::cout << request->to_json().dump() << std::endl;
 

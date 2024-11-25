@@ -97,6 +97,32 @@ void Session::processRequest(const jsonrpcpp::request_ptr request, jsonrpcpp::en
                     result["StatusCode"] = 1;
                 }
                 response.reset(new jsonrpcpp::Response(*request, result));
+            } else if (request->method() == "SettingRequest") {
+                int account = request->params().get("Account");
+                int alter = request->params().get("Alter");
+
+                if (alter == 0) {
+                    std::string new_passw = request->params().get("NewPassword");
+                    std::string passw;
+                    sbase_->ReadByID(account, "passw", &passw);
+                    if (passw.compare(request->params().get("OldPassword")) == 0) {
+                        sbase_->UpdateByID(account, "passw", new_passw);
+                        result["Method"] = "SettingRequest";
+                        result["StatusCode"] = 0;
+                    } else {
+                        result["Method"] = "SettingRequest";
+                        result["StatusCode"] = 1;
+                    }
+                    response.reset(new jsonrpcpp::Response(*request, result));
+                } else if (alter == 1) {
+                    std::string icon = request->params().get("Icon");
+                    sbase_->UpdateByID(account, "icon", icon);
+                    notification.reset(new jsonrpcpp::Notification("SettingNotification", jsonrpcpp::Parameter("Account", account, "Icon", icon)));
+                    std::thread([=](int, std::string) {
+                        group_.DataUpdate(account, icon);
+                        // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+                    }, account, icon).detach();
+                }
             }
         } else {
             std::cout << "NULL Process Request\n";
@@ -143,6 +169,8 @@ std::string Session::doMessageReceived(const std::string& message)
                 } else {
                     group_.Deliver((int)notification->params().get("ToAccount"), notification->to_json().dump());
                 }
+            } else if (notification->method() == "SettingNotification") {
+                group_.Deliver(self, notification->to_json().dump(), NOTIFICATION_TYPE_NO_HIS);
             }
         }
         if (response) {

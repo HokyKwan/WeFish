@@ -8,7 +8,9 @@ if(CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -pthread")
 endif()
 
-add_subdirectory(server)
-add_subdirectory(client)
-add_subdirectory(fserver)
-add_subdirectory(fclient)
+#add_subdirectory(server)
+#add_subdirectory(client)
+#add_subdirectory(fserver)
+#add_subdirectory(fclient)
+add_subdirectory(assist)
+

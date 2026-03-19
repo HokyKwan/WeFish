@@ -113,7 +113,7 @@ public:
     void DataUpdate(int account, std::string icon_str)
     {
         if (recentMessages_.size() == 0) return ;
-
+    
         for (int idx = 0; idx < recentMessages_.size(); ++idx) {
             jsonrpcpp::entity_ptr entity = jsonrpcpp::Parser::do_parse(recentMessages_.at(idx));
             if (entity->is_notification()) {

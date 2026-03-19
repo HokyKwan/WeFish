@@ -1,0 +1,22 @@
+SET(PROG_NAME assist)
+
+INCLUDE_DIRECTORIES(
+  ${CMAKE_SOURCE_DIR}/${PROG_NAME}
+)
+
+AUX_SOURCE_DIRECTORY(
+  ${CMAKE_SOURCE_DIR}/${PROG_NAME}
+  src_dir
+)
+
+ADD_EXECUTABLE(${PROG_NAME}
+  ${src_dir}
+)
+
+TARGET_LINK_LIBRARIES(
+  ${PROG_NAME} PUBLIC
+  ssl
+  crypto
+  pthread
+  cjson
+)
